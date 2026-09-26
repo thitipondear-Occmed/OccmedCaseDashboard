@@ -4,6 +4,52 @@ import datetime
 # ตั้งค่าหน้าเพจ
 st.set_page_config(page_title="Interesting Case Dashboard", page_icon="🩺", layout="wide")
 
+# แทรกโค้ด CSS เพื่อปรับแต่ง UI ให้สวยงามเหมือน React (Tailwind)
+st.markdown("""
+<style>
+    /* 1. เปลี่ยนสีพื้นหลังแอปให้เป็นสีเทาอ่อน (slate-50) */
+    .stApp {
+        background-color: #f8fafc;
+    }
+    
+    /* 2. ซ่อนเมนูขวาบนและ Footer ของ Streamlit ออก ให้ดูเป็น Web App มืออาชีพ */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {background-color: transparent !important;}
+    
+    /* 3. ปรับแต่งกล่อง Container (การ์ด) ให้มีขอบมน เงาสวยงาม และพื้นหลังสีขาว */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #ffffff;
+        border-radius: 1rem !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+        padding: 0.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    /* 4. เพิ่มลูกเล่น (Hover) ตอนเอาเมาส์ชี้ที่การ์ด ให้การ์ดลอยขึ้นเล็กน้อย */
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* 5. ปรับแต่งปุ่มกดให้ดูนุ่มนวลขึ้น */
+    div.stButton > button:first-child {
+        border-radius: 0.5rem !important;
+        font-weight: 600 !important;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    
+    /* 6. ปรับแต่งข้อความแจ้งเตือน (Alerts/Info) ให้ขอบมน */
+    [data-testid="stAlert"] {
+        border-radius: 0.75rem !important;
+        border: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # อัปเดตนิยาม EPA
 EPA_DICTIONARY = {
     "EPA1": {"name": "EPA 1: ประเมินความพร้อมในการเข้าทำงาน หรือกลับเข้าทำงาน (Fit for work/Return to work)", "color": "#1e3a8a", "bg": "#dbeafe"},
