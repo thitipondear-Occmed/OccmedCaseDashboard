@@ -1,314 +1,270 @@
 import streamlit as st
 import pandas as pd
 
-# ==========================================
-# 1. การตั้งค่าหน้าเว็บ (Page Config & CSS)
-# ==========================================
+# ----------------------------------------
+# 1. ตั้งค่าหน้าเพจและ CSS (UI ให้ออกมาสวยงาม)
+# ----------------------------------------
 st.set_page_config(page_title="Interesting Case Dashboard", page_icon="🩺", layout="wide")
 
-# ซ่อนเมนู Streamlit และเพิ่ม CSS ให้พื้นหลังดูเป็นแอปพลิเคชัน
 st.markdown("""
     <style>
+    /* ซ่อนเมนูหลักของ Streamlit */
     #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
     footer {visibility: hidden;}
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+    header {visibility: hidden;}
+    
+    /* ปรับปุ่มให้ดูสวยและขอบมนขึ้น */
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
     }
-    /* เปลี่ยนสีพื้นหลังของแอปให้เป็นสีเทาอ่อนแบบ Tailwind (bg-slate-50) */
-    .stApp {
-        background-color: #f8fafc;
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. จำลองฐานข้อมูล (Session State Database)
-# ==========================================
-if 'init' not in st.session_state:
-    st.session_state.init = True
-    st.session_state.role = 'chief' # เริ่มต้นที่ Chief
+# ----------------------------------------
+# 2. ข้อมูลจำลองและคำจำกัดความ (Mock Data)
+# ----------------------------------------
+epa_dict = {
+    "EPA1": {"name": "EPA 1: ประเมินความพร้อมในการเข้าทำงาน หรือกลับเข้าทำงาน (Fit for work/Return to work)", "obj": "เพื่อให้สามารถประเมินและตัดสินใจเรื่องความพร้อมในการเข้า/กลับเข้าทำงานได้อย่างถูกต้องและปลอดภัย"},
+    "EPA2": {"name": "EPA 2: การส่งเสริมสุขภาพพนักงาน", "obj": "เพื่อให้สามารถวางแผนและดำเนินการส่งเสริมสุขภาพพนักงานในสถานประกอบการได้อย่างเหมาะสม"},
+    "EPA3": {"name": "EPA 3: การเฝ้าระวังทางการแพทย์", "obj": "เพื่อให้สามารถออกแบบและดำเนินการเฝ้าระวังทางสุขภาพให้กับกลุ่มเสี่ยงได้อย่างถูกต้อง"},
+    "EPA4": {"name": "EPA 4: การวินิจฉัยเนื่องจากการทำงาน (ไม่ได้ลงพื้นที่)", "obj": "เพื่อให้สามารถประเมินและวินิจฉัยโรคว่าเกี่ยวเนื่องจากการทำงานหรือไม่"},
+    "EPA5": {"name": "EPA 5: การสอบสวนโรคจากการทำงานในสถานประกอบกิจการ", "obj": "เพื่อให้สามารถวางแผนและลงพื้นที่สอบสวนโรคในสถานประกอบกิจการได้"}
+}
+
+if 'cases' not in st.session_state:
+    st.session_state.cases = pd.DataFrame([
+        {"Case ID": "C1", "Date": "9/21/2026", "Author": "R2 พลวัต", "EPA": "EPA1", "Topic": "Fit for work in colour vision deficiency", "Note": "", "Link": "https://docs.google.com/presentation/...", "Status": "New", "Key_Points": "", "Staff_Feedback": ""},
+        {"Case ID": "C2", "Date": "9/18/2026", "Author": "R1 เจตะพงศ์", "EPA": "EPA4, EPA5", "Topic": "ผลการตรวจสาร trans, trans-Muconic acid ในปัสสาวะผิดปกติเป็นเนื่องจากการทำงานหรือไม่", "Note": "ตอนที่ไปสอบสวน ดูน่าจะไม่ใช่จากงานคับ...", "Link": "https://drive.google.com/open?id=...", "Status": "Nominated", "Key_Points": "ปรึกษาเรื่องการแปลผล biological monitoring", "Staff_Feedback": ""},
+        {"Case ID": "C3", "Date": "8/27/2026", "Author": "R3 ธิติพล", "EPA": "EPA4", "Topic": "Was this contact dermatitis patient WR or not?", "Note": "", "Link": "https://docs.google.com/presentation/...", "Status": "Presented", "Key_Points": "เกณฑ์การวินิจฉัย Occupational Contact Dermatitis", "Staff_Feedback": "เตรียมรูปผื่นและ patch test มาให้ชัดเจน"},
+        {"Case ID": "C4", "Date": "8/24/2026", "Author": "R2 พลวัต", "EPA": "EPA1", "Topic": "Fit to drive after stroke private driver", "Note": "", "Link": "https://docs.google.com/presentation/...", "Status": "New", "Key_Points": "", "Staff_Feedback": ""}
+    ])
+
+# ----------------------------------------
+# 3. สถานะหน้าจอ (Session State)
+# ----------------------------------------
+if 'role' not in st.session_state:
+    st.session_state.role = 'Chief Resident'
+if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
-    st.session_state.show_success_screen = False
+if 'view_mode' not in st.session_state:
+    st.session_state.view_mode = 'list' 
+
+# ----------------------------------------
+# 4. เมนูด้านข้าง (Sidebar - เฉพาะตัวกรอง)
+# ----------------------------------------
+with st.sidebar:
+    st.title("🩺 ตัวกรองข้อมูล")
     
-    # ข้อมูลจำลอง 4 เคส
-    initial_cases = [
-        {
-            "Case ID": "C1",
-            "Date": "9/21/2026",
-            "Author": "R2 พลวัต",
-            "Topic": "Fit for work in colour vision deficiency",
-            "EPAs": ["EPA 1"],
-            "EPA_Detail": "ประเมินความพร้อมในการเข้าทำงาน หรือกลับเข้าทำงาน (Fit for work or Return to work)",
-            "Link": "https://docs.google.com/presentation/d/1JtKRCcPHNOwsdhk-hsyG1fwr5FFhW-teFCqx-zAZ_VM/edit?usp=sharing",
-            "Note": "-",
-            "Status": "New",
-            "KeyPoints": "",
-            "StaffFeedback": ""
-        },
-        {
-            "Case ID": "C2",
-            "Date": "9/18/2026",
-            "Author": "R1 เจตะพงศ์",
-            "Topic": "ผลการตรวจสาร trans, trans-Muconic acid ในปัสสาวะผิดปกติเป็นเนื่องจากการทำงานหรือไม่",
-            "EPAs": ["EPA 4", "EPA 5"],
-            "EPA_Detail": "การวินิจฉัยเนื่องจากการทำงาน และ การสอบสวนโรคจากการทำงานในสถานประกอบกิจการ",
-            "Link": "https://drive.google.com/open?id=1z6iBlU0zbNahp2Jtcq8FokGvi18ju60A",
-            "Note": "ตอนที่ไปสอบสวน ดูน่าจะไม่ใช่จากงานคับ มีนัดตรวจซ้ำไว้ แต่ไม่แน่ใจว่าผลเป็นไงบ้างคับ",
-            "Status": "Nominated", # จำลองว่า Chief เลือกไว้แล้ว 1 เคส
-            "KeyPoints": "สงสัยเรื่องผล Lab ว่าสัมพันธ์กับการสัมผัสในที่ทำงานจริงหรือไม่",
-            "StaffFeedback": ""
-        },
-        {
-            "Case ID": "C3",
-            "Date": "8/27/2026",
-            "Author": "R3 ธิติพล",
-            "Topic": "Was this contact dermatitis patient WR or not?",
-            "EPAs": ["EPA 4"],
-            "EPA_Detail": "การวินิจฉัยเนื่องจากการทำงาน (โดยที่ไม่ได้ลงพื้นที่สอบสวน)",
-            "Link": "https://docs.google.com/presentation/d/1yymZmB360ijT9awvnVy_yimrolH461kgZJNGyA_mpVo/edit?usp=sharing",
-            "Note": "-",
-            "Status": "Presented", # จำลองว่าพรีเซนต์ไปแล้ว
-            "KeyPoints": "การวินิจฉัยแยกโรค",
-            "StaffFeedback": ""
-        },
-        {
-            "Case ID": "C4",
-            "Date": "8/24/2026",
-            "Author": "R2 พลวัต",
-            "Topic": "Fit to drive after stroke private driver",
-            "EPAs": ["EPA 1"],
-            "EPA_Detail": "ประเมินความพร้อมในการเข้าทำงาน หรือกลับเข้าทำงาน (Fit for work or Return to work)",
-            "Link": "https://docs.google.com/presentation/d/1DqGkVO-4muxD8zT0RFowPLRQ9ZKQeGAnL5lpr6q9x04/edit?usp=drivesdk",
-            "Note": "-",
-            "Status": "New",
-            "KeyPoints": "",
-            "StaffFeedback": ""
-        }
-    ]
-    st.session_state.cases_db = initial_cases
-
-# ==========================================
-# 3. โครงสร้างส่วนหัว (Header & Role Toggle)
-# ==========================================
-col_title, col_role = st.columns([3, 1])
-with col_title:
-    st.title("🩺 Interesting Case Dashboard")
-    if st.session_state.role == 'chief':
-        st.caption("กำลังใช้งานในโหมด: **CHIEF RESIDENT**")
+    st.subheader("สถานะ Workflow")
+    if st.session_state.role == 'Staff (อาจารย์)':
+        status_filter = st.radio("เลือกดูรายการ:", ["👑 เสนอโดย Chief (รอพิจารณา)", "🗂️ รายการเคสทั้งหมด", "✅ อาจารย์อนุมัติแล้ว", "🎤 พรีเซนต์ไปแล้ว"], index=0)
+        st.info("💡 โหมดอาจารย์: แสดงเฉพาะเคสที่ Chief เสนอมาเป็นค่าเริ่มต้น")
     else:
-        st.caption("กำลังใช้งานในโหมด: **STAFF (อาจารย์)**")
+        status_filter = st.radio("เลือกดูรายการ:", ["🗂️ รายการเคสทั้งหมด", "👑 เสนอโดย Chief", "✅ อาจารย์อนุมัติแล้ว", "🎤 พรีเซนต์ไปแล้ว"], index=0)
         
+    st.markdown("---")
+    epa_filter = st.selectbox("กรองตามหมวดหมู่ EPA:", ["ดูทั้งหมด", "EPA1", "EPA2", "EPA3", "EPA4", "EPA5"])
+
+# ----------------------------------------
+# ส่วนหัวของแอป (Header & Role Selector) - อยู่ด้านบนเสมอ
+# ----------------------------------------
+col_header, col_role = st.columns([3, 1])
+with col_header:
+    if st.session_state.view_mode == 'list':
+        st.header("🗂️ Interesting Case Dashboard")
+        st.caption(f"กำลังใช้งานในโหมด: **{st.session_state.role}**")
 with col_role:
-    st.write("") # spacer
-    if st.button("🔄 เปลี่ยนบทบาท", use_container_width=True):
-        st.session_state.role = 'staff' if st.session_state.role == 'chief' else 'chief'
-        st.session_state.selected_case = None # Reset view
+    new_role = st.selectbox("👤 เข้าใช้งานในฐานะ:", ["Chief Resident", "Staff (อาจารย์)"], index=0 if st.session_state.role == 'Chief Resident' else 1)
+    if new_role != st.session_state.role:
+        st.session_state.role = new_role
+        st.session_state.selected_case = None
+        st.session_state.view_mode = 'list'
         st.rerun()
 
-st.divider()
+st.markdown("---")
 
-# ==========================================
-# 4. หน้าจอเสร็จสิ้น (Success Screen)
-# ==========================================
-if st.session_state.show_success_screen:
-    st.success("🎉 ดำเนินการเสร็จสิ้น! บันทึกและแจ้งเตือน Chief เรียบร้อยแล้ว")
-    st.markdown("### อาจารย์ได้ทำการเลือกเคสสำหรับ Conference เรียบร้อยแล้ว")
-    st.write("ระบบได้ทำการอัปเดตสถานะและเปิดช่องให้ Chief มองเห็นข้อเสนอแนะของอาจารย์แล้วครับ")
-    st.write("")
-    if st.button("⬅️ กลับไปหน้า Dashboard"):
-        st.session_state.show_success_screen = False
-        st.rerun()
+# ----------------------------------------
+# 5. ฟังก์ชันแสดงรายการเคส (List View - แบบ 2 คอลัมน์)
+# ----------------------------------------
+def show_list_view():
+    df = st.session_state.cases
+    
+    # การกรองข้อมูล
+    if status_filter == "👑 เสนอโดย Chief" or status_filter == "👑 เสนอโดย Chief (รอพิจารณา)":
+        df = df[df['Status'] == 'Nominated']
+    elif status_filter == "✅ อาจารย์อนุมัติแล้ว":
+        df = df[df['Status'] == 'Approved']
+    elif status_filter == "🎤 พรีเซนต์ไปแล้ว":
+        df = df[df['Status'] == 'Presented']
         
-# ==========================================
-# 5. หน้าต่างรายละเอียดเคส (Detail View)
-# ==========================================
-elif st.session_state.selected_case is not None:
-    if st.button("⬅️ ย้อนกลับไปหน้ารายการเคส"):
+    if epa_filter != "ดูทั้งหมด":
+        df = df[df['EPA'].str.contains(epa_filter)]
+        
+    if st.session_state.role == 'Chief Resident':
+        df = df.sort_values(by="Date", ascending=False)
+        
+    st.write(f"พบข้อมูลทั้งหมด **{len(df)}** รายการ")
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # แบ่งเลย์เอาต์เป็น 2 คอลัมน์
+    cols = st.columns(2)
+    
+    # วนลูปสร้างการ์ด HTML ลงในแต่ละคอลัมน์
+    for index, (df_idx, row) in enumerate(df.iterrows()):
+        case_id = row['Case ID']
+        border_color = "#3b82f6" 
+        badge_html = ""
+        
+        if row['Status'] == 'Nominated':
+            border_color = "#eab308" 
+            badge_html = '<span style="background:#fef08a; color:#854d0e; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">👑 Chief เสนอเคสนี้</span>'
+        elif row['Status'] == 'Approved':
+            border_color = "#22c55e" 
+            badge_html = '<span style="background:#bbf7d0; color:#166534; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">✅ อาจารย์เลือกแล้ว</span>'
+        elif row['Status'] == 'Presented':
+            border_color = "#9ca3af" 
+            badge_html = '<span style="background:#e5e7eb; color:#374151; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">🎤 พรีเซนต์ไปแล้ว</span>'
+
+        html_card = f"""
+        <div style="
+            background-color: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); 
+            border-left: 6px solid {border_color};
+            margin-bottom: 15px;
+            border: 1px solid #f3f4f6;
+            min-height: 140px;
+        ">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                {badge_html}
+            </div>
+            <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px; font-weight: 600; line-height: 1.4;">
+                {row['Topic']}
+            </h3>
+            <p style="margin: 0; color: #6b7280; font-size: 13px;">
+                <strong>โดย:</strong> {row['Author']} | 🕒 {row['Date']}
+            </p>
+        </div>
+        """
+        
+        # ใส่การ์ดลงในคอลัมน์ซ้ายหรือขวา (สลับกันไป)
+        with cols[index % 2]:
+            st.markdown(html_card, unsafe_allow_html=True)
+            if st.button("🔍 ดูรายละเอียด & จัดการ", key=f"btn_{case_id}", use_container_width=True):
+                st.session_state.selected_case = case_id
+                st.session_state.view_mode = 'detail'
+                st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
+
+# ----------------------------------------
+# 6. ฟังก์ชันแสดงรายละเอียดเคส (Detail View)
+# ----------------------------------------
+def show_detail_view():
+    if st.button("← ย้อนกลับไปหน้ารวม", type="secondary"):
+        st.session_state.view_mode = 'list'
         st.session_state.selected_case = None
         st.rerun()
         
-    case_id = st.session_state.selected_case
-    # ดึงข้อมูลเคสปัจจุบันมาแสดง
-    case = next(item for item in st.session_state.cases_db if item["Case ID"] == case_id)
+    df = st.session_state.cases
+    case_idx = df.index[df['Case ID'] == st.session_state.selected_case].tolist()[0]
+    case = df.iloc[case_idx]
     
-    st.subheader(case["Topic"])
-    st.markdown(f"**ผู้นำเสนอ:** {case['Author']} | **วันที่ส่ง:** {case['Date']}")
-    st.markdown(f"**หมวดหมู่ EPA:** {', '.join(case['EPAs'])}")
-    st.info(f"**🎯 Learning Objective:** {case['EPA_Detail']}")
-    if case["Note"] != "-":
-        st.warning(f"**📝 หมายเหตุจากผู้ส่ง:** {case['Note']}")
-    st.markdown(f"**🔗 เอกสารแนบ:** [คลิกเปิดลิงก์สไลด์/ข้อมูล]({case['Link']})")
+    st.markdown("---")
     
-    st.divider()
+    if case['Status'] == 'Nominated':
+        st.warning("👑 **สถานะ:** เคสนี้ถูกเสนอโดย Chief Resident (รออาจารย์พิจารณา)")
+    elif case['Status'] == 'Approved':
+        st.success("✅ **สถานะ:** อาจารย์ (Staff) อนุมัติเลือกเคสนี้สำหรับ Conference แล้ว")
+    elif case['Status'] == 'Presented':
+        st.info("🎤 **สถานะ:** เคสนี้ถูกนำไปพรีเซนต์เรียบร้อยแล้ว")
+        
+    st.title(case['Topic'])
+    st.write(f"**ผู้นำเสนอ:** {case['Author']} | **วันที่ส่ง:** {case['Date']}")
     
-    # ------------------------------------
-    # มุมมองและเครื่องมือสำหรับ Chief Resident
-    # ------------------------------------
-    if st.session_state.role == 'chief':
+    if case['Note']:
+        st.info(f"**📝 หมายเหตุจากผู้ส่ง:** {case['Note']}")
+        
+    st.markdown(f"**🔗 [คลิกที่นี่เพื่อเปิดดูเอกสารแนบ (สไลด์/ข้อมูล)]({case['Link']})**")
+    
+    st.markdown("### 🎯 วัตถุประสงค์การเรียนรู้ (Learning Objective)")
+    epa_list = [e.strip() for e in case['EPA'].split(',')]
+    for epa in epa_list:
+        if epa in epa_dict:
+            st.markdown(f"- **{epa_dict[epa]['name']}**: {epa_dict[epa]['obj']}")
+
+    st.markdown("---")
+    
+    if st.session_state.role == 'Chief Resident':
+        st.subheader("🛠️ การจัดการ (สำหรับ Chief)")
+        
         if case['Status'] == 'New':
-            st.markdown("### 👑 เครื่องมือสำหรับ Chief")
-            key_pts = st.text_area("ประเด็นสำคัญที่จะนำเสนอ (กรอกเพื่อเสนอเคส)", value=case['KeyPoints'])
-            if st.button("👑 เสนอเคสนี้ให้อาจารย์ (Nominate)", type="primary", disabled=(len(key_pts) == 0)):
-                case['Status'] = 'Nominated'
-                case['KeyPoints'] = key_pts
-                st.session_state.selected_case = None
+            input_keypoints = st.text_area("ประเด็นสำคัญที่จะนำเสนอ (บังคับกรอกก่อนเสนอเคส):", value=case['Key_Points'])
+            if st.button("👑 เสนอเคสนี้ให้อาจารย์", type="primary", disabled=not input_keypoints.strip()):
+                st.session_state.cases.at[case_idx, 'Status'] = 'Nominated'
+                st.session_state.cases.at[case_idx, 'Key_Points'] = input_keypoints
+                st.session_state.view_mode = 'list'
                 st.rerun()
-                
-        elif case['Status'] == 'Nominated':
-            st.info("⏳ เสนอเคสนี้ไปแล้ว รออาจารย์พิจารณา...")
-            st.text_area("ประเด็นสำคัญที่จะนำเสนอ", value=case['KeyPoints'], disabled=True)
-            
         elif case['Status'] == 'Approved':
-            st.success("✅ อาจารย์ (Staff) ได้อนุมัติเลือกเคสนี้สำหรับทำ Conference แล้ว!")
-            if case['StaffFeedback']:
-                st.markdown(f"**💬 ข้อเสนอแนะจากอาจารย์:**\n\n> {case['StaffFeedback']}")
-            
-            st.markdown("---")
-            if st.button("🎤 ทำเครื่องหมายว่า พรีเซนต์ไปแล้ว", type="primary"):
-                case['Status'] = 'Presented'
-                st.session_state.selected_case = None
+            st.write(f"**ประเด็นที่เสนอไว้:** {case['Key_Points']}")
+            if case['Staff_Feedback']:
+                st.success(f"**💬 ข้อเสนอแนะจากอาจารย์:** {case['Staff_Feedback']}")
+            if st.button("🎤 ทำเครื่องหมายว่า พรีเซนต์ไปแล้ว"):
+                st.session_state.cases.at[case_idx, 'Status'] = 'Presented'
+                st.session_state.view_mode = 'list'
                 st.rerun()
-                
-        elif case['Status'] == 'Presented':
-            st.markdown("🎤 **เคสนี้ถูกพรีเซนต์เรียบร้อยแล้ว**")
-            
-    # ------------------------------------
-    # มุมมองและเครื่องมือสำหรับ Staff (อาจารย์)
-    # ------------------------------------
-    else:
-        st.markdown("### 📋 ข้อมูลประกอบการพิจารณา")
-        st.text_area("ประเด็นสำคัญที่ Chief เสนอ:", value=case['KeyPoints'], disabled=True)
-        
-        if case['Status'] == 'Nominated':
-            if st.button("✅ อนุมัติเคสนี้สำหรับ Conference", type="primary"):
-                case['Status'] = 'Approved'
-                st.rerun()
-                
-        elif case['Status'] == 'Approved':
-            st.success("✅ คุณเลือกเคสนี้แล้ว (รอให้ Chief นำไปพรีเซนต์)")
-            feedback = st.text_area("💬 เพิ่มข้อเสนอแนะให้ Chief (บันทึกอัตโนมัติ):", value=case['StaffFeedback'])
-            # บันทึกข้อเสนอแนะเมื่อมีการพิมพ์
-            if feedback != case['StaffFeedback']:
-                case['StaffFeedback'] = feedback
-
-# ==========================================
-# 6. หน้าจอหลัก (Dashboard List View)
-# ==========================================
-else:
-    col_sidebar, col_main = st.columns([1, 3])
-    
-    # ------------------------------------
-    # เมนูตัวกรองด้านซ้าย (Sidebar)
-    # ------------------------------------
-    with col_sidebar:
-        st.markdown("**สถานะ Workflow**")
-        
-        # ตั้งค่า Filter พื้นฐานตามบทบาท
-        default_status = 'All'
-        if st.session_state.role == 'staff':
-            # โหมด Staff ให้ตั้งค่าเริ่มต้นเป็น Nominated
-            st.info("💡 แสดงเฉพาะ 'เคสที่ Chief เสนอมา' หากต้องการดูเคสทั้งหมดให้เลือกเมนูด้านล่าง")
-            default_status = 'Nominated'
-            
-        status_filter = st.radio(
-            "เลือกดูสถานะ:",
-            ['All', 'New', 'Nominated', 'Approved', 'Presented'],
-            format_func=lambda x: {
-                'All': '🗂️ รายการเคสทั้งหมด',
-                'New': '🆕 รอพิจารณา',
-                'Nominated': '👑 เสนอโดย Chief',
-                'Approved': '✅ อาจารย์อนุมัติแล้ว',
-                'Presented': '🎤 พรีเซนต์ไปแล้ว'
-            }[x],
-            index=['All', 'New', 'Nominated', 'Approved', 'Presented'].index(default_status)
-        )
-        
-        st.markdown("**หมวดหมู่ EPA**")
-        epa_filter = st.selectbox("เลือก EPA:", ["ทั้งหมด", "EPA 1", "EPA 2", "EPA 3", "EPA 4", "EPA 5"])
-
-    # ------------------------------------
-    # พื้นที่แสดงการ์ดเคส (Main View)
-    # ------------------------------------
-    with col_main:
-        # 1. กรองข้อมูลตามที่เลือก
-        filtered_cases = [c for c in st.session_state.cases_db]
-        
-        if status_filter != 'All':
-            filtered_cases = [c for c in filtered_cases if c['Status'] == status_filter]
-            
-        if epa_filter != "ทั้งหมด":
-            filtered_cases = [c for c in filtered_cases if epa_filter in c['EPAs']]
-            
-        # 2. เรียงลำดับข้อมูล
-        if st.session_state.role == 'staff':
-            # ของอาจารย์ เอาที่อนุมัติแล้วหรือเพิ่งเสนอขึ้นบน
-            filtered_cases.sort(key=lambda x: 0 if x['Status'] in ['Nominated', 'Approved'] else 1)
         else:
-            # ของ Chief เอาใหม่ล่าสุดขึ้นบน (จำลองจากรหัส C4, C3, C2...)
-            filtered_cases.reverse()
-            
-        st.markdown(f"**พบข้อมูลทั้งหมด {len(filtered_cases)} รายการ**")
+            st.write(f"**ประเด็นที่เสนอไว้:** {case['Key_Points']}")
+            st.info("เคสนี้ทำรายการไปแล้ว หรือรออาจารย์อนุมัติ")
+
+    elif st.session_state.role == 'Staff (อาจารย์)':
+        st.subheader("🛠️ การพิจารณา (สำหรับอาจารย์)")
         
-        # 3. วาดการ์ด HTML ทับลงไป
-        for case in filtered_cases:
-            # กำหนดสีขอบซ้าย (Border Left) ตามสถานะ
-            border_color = "#3b82f6" # สีฟ้า (Default)
-            badge_html = ""
+        if case['Key_Points']:
+            st.warning(f"**📌 ประเด็นสำคัญจาก Chief:** {case['Key_Points']}")
             
-            if case['Status'] == 'Nominated':
-                border_color = "#eab308" # สีเหลือง
-                badge_html = '<span style="background:#fef08a; color:#854d0e; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">👑 Chief เสนอ</span>'
-            elif case['Status'] == 'Approved':
-                border_color = "#22c55e" # สีเขียว
-                badge_html = '<span style="background:#bbf7d0; color:#166534; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">✅ อาจารย์เลือกแล้ว</span>'
-            elif case['Status'] == 'Presented':
-                border_color = "#9ca3af" # สีเทา
-                badge_html = '<span style="background:#e5e7eb; color:#374151; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🎤 พรีเซนต์ไปแล้ว</span>'
-            else:
-                badge_html = '<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:bold;">🆕 เคสใหม่</span>'
-
-            # HTML & CSS สำหรับการ์ด
-            html_card = f"""
-            <div style="
-                background-color: white; 
-                padding: 20px; 
-                border-radius: 12px; 
-                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); 
-                border-left: 6px solid {border_color};
-                margin-bottom: 10px;
-                border: 1px solid #f3f4f6;
-            ">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    {badge_html}
-                </div>
-                <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 18px; font-weight: 600; line-height: 1.4;">
-                    {case['Topic']}
-                </h3>
-                <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                    <strong>โดย:</strong> {case['Author']} | 🕒 {case['Date']}
-                </p>
-            </div>
-            """
-            # สั่งให้ Streamlit เรนเดอร์ HTML แบบเต็มความกว้าง
-            st.markdown(html_card, unsafe_allow_html=True)
-            
-            # วางปุ่มกดของ Streamlit ไว้ใต้การ์ด
-            if st.button(f"🔍 ดูรายละเอียด & จัดการ ({case['Case ID']})", key=f"btn_{case['Case ID']}", use_container_width=True):
-                st.session_state.selected_case = case['Case ID']
+        if case['Status'] == 'Nominated':
+            feedback = st.text_area("ข้อเสนอแนะเพิ่มเติม (ถ้ามี):")
+            if st.button("✅ อนุมัติเคสนี้", type="primary"):
+                st.session_state.cases.at[case_idx, 'Status'] = 'Approved'
+                st.session_state.cases.at[case_idx, 'Staff_Feedback'] = feedback
+                st.session_state.view_mode = 'success'
                 st.rerun()
-            
-            st.markdown("<br>", unsafe_allow_html=True) # เว้นระยะห่างให้สวยงาม
+        elif case['Status'] == 'Approved':
+            st.success(f"**💬 ข้อเสนอแนะที่คุณพิมพ์ไว้:** {case['Staff_Feedback']}")
+            st.info("คุณอนุมัติเคสนี้ไปแล้ว")
+        else:
+            st.info("เคสนี้ยังไม่ถูกเสนอ หรือพรีเซนต์ไปแล้ว")
 
-    # ------------------------------------
-    # แถบยืนยันด้านล่างสุด (เฉพาะ Staff)
-    # ------------------------------------
-    if st.session_state.role == 'staff':
-        approved_count = len([c for c in st.session_state.cases_db if c['Status'] == 'Approved'])
-        st.divider()
-        st.markdown(f"### 📊 สรุปการเลือกเคสสำหรับ Conference: เลือกไปแล้ว **{approved_count}** เคส")
-        if approved_count > 0:
-            if st.button("✅ ยืนยันการเลือกเคส และแจ้งเตือน Chief", type="primary", use_container_width=True):
-                st.session_state.show_success_screen = True
-                st.rerun()
+# ----------------------------------------
+# 7. หน้าจอเสร็จสิ้น (Success Screen)
+# ----------------------------------------
+def show_success_view():
+    st.balloons()
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.success("🎉 **ดำเนินการเสร็จสิ้น!**")
+        st.write("ระบบได้บันทึกการอนุมัติเคส และข้อเสนอแนะของคุณเรียบร้อยแล้ว")
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("← กลับไปหน้ารายการเคส", use_container_width=True):
+            st.session_state.view_mode = 'list'
+            st.session_state.selected_case = None
+            st.rerun()
+
+# ----------------------------------------
+# ควบคุมการแสดงผล (Main Routing)
+# ----------------------------------------
+if st.session_state.view_mode == 'list':
+    show_list_view()
+elif st.session_state.view_mode == 'detail':
+    show_detail_view()
+elif st.session_state.view_mode == 'success':
+    show_success_view()
